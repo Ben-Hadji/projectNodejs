@@ -1,7 +1,6 @@
 import mongoose, { Schema } from "mongoose";
 
 export interface IUser{
-    userID: Number;
     nom: string;
     prenom: string; 
     role: Role;
@@ -13,10 +12,6 @@ export interface IUser{
 }
 
 const UserSchema = new Schema({
-    userID: {
-        type : Number,
-        unique: true
-    },
     nom: String,
     prenom: String ,
     role: String,
