@@ -3,6 +3,7 @@ import Users, { IUser, Role } from "./IUser"
 import { ReasonPhrases, StatusCodes } from "http-status-codes"
 import { date } from "joi"
 import { isAdmin } from "../middleware/checkAuth"
+import jwt from 'jsonwebtoken';
 
 // export const users : Array<IUser> = [{nom: "Alex", prenom: "winn", userID: 0, role: Role.admin, password: "alwibe", inscDate: new Date(), mail: "alwibe@gmail.com"}]
 
@@ -115,20 +116,20 @@ router.post("/register", async (req, res) => {
 
 router.post("/login", async (req, res) => {
     // console.log(users)
-    if(!req.body.mail || !req.body.password){
-        res.render('login', {message: "Please enter both username and password"});
+    if(!req.body.mail){
+        res.render('login', {message: "Please enter username mail to connect"});
     }
     else{
         try {
             const userFinded = await Users.findOne({mail: req.body.mail, password: req.body.password}).exec()
             if(userFinded) {
-                (req.session as any).user = userFinded;
-                res.send({message: `Welcome ${userFinded.prenom}`, status: "logged in"})
+                const token = jwt.sign({ id: userFinded.id }, `${process.env.JWT_SECRET}`, { expiresIn: "1d" });
+                res.send({message: `Welcome ${userFinded.prenom}`, status: "logged in", token: token})
                 return
             } else {
                 res.status(400)
                 res.send({message: "invalid credentials", status: "login failled"})
-            }
+            }          
         } catch (err) {
             res.status(StatusCodes.NOT_FOUND).send({message: "Error in database"})
         }
