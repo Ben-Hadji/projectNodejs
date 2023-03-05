@@ -5,7 +5,7 @@ export interface IUser{
     prenom: string; 
     role: Role;
     pseudo?: string;
-    password: string;
+    password: object;
     inscDate: Date;
     mail: string;
     banni?: boolean
@@ -20,7 +20,9 @@ const UserSchema = new Schema({
         unique : true,
         require: false
     },
-    password: String,
+    password: {
+        type: Object
+    },
     inscDate: Date,
     mail: {
         type: String, 

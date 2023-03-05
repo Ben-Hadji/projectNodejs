@@ -1,34 +1,51 @@
 import { Request, Response } from "express";
-import MUser, {IUser}  from "../users/IUser";
+import Users, {IUser}  from "../users/IUser";
+import { generateToken, removePassword } from "./checkAuth";
 import User from "../users/UserController";
-import { JWT_SECRET } from "../config";
+import { comparePassword } from "./hashService";
+// import { JWT_SECRET } from "../config";
 
-import jwt from 'jsonwebtoken';
-
-
+// import jwt from 'jsonwebtoken';
 
 class Auth{
 
     currentUser = {} as any
 
-        public login = async  (req: Request, res: Response) => {
-        const { lastname, password } = req.body
-        this.currentUser = await MUser.findOne({
-            lastname , password
+    public login = async  (req: Request, res: Response) => {
+        const { mail, password } = req.body
+        this.currentUser = await Users.findOne({
+            mail
         })
+        console.log(this.currentUser)
+        if ((this.currentUser == null) || !comparePassword(password, this.currentUser?.password)) {
+            return res.status(400).json({ error: 'Invalid credentials' })
+        }
 
-        const token = jwt.sign({ id: this.currentUser.id }, JWT_SECRET, { expiresIn: '1h' });
+        const userWithtoken = generateToken(this.currentUser)
 
         if(this.currentUser){
-            res.json({text: "User connected", token})
+            res.status(200)
+            res.send({message: `Welcome ${this.currentUser.prenom}`, status: "logged in", data: removePassword(userWithtoken)})
         }else{
+            res.status(400)
             res.json({text: "User not found"})
         }
     }
 
-    public logout = (req: Request, res: Response) => {
+    public logout = async (req: Request, res: Response) => {
+        if (!this.currentUser) {
+            res.status(401);
+            res.send({
+              message: "You're not logged in !",
+              status: "BadRequest",
+            });
+        }
         this.currentUser = {} as IUser
-        res.json({text: "User disconnected"})
+        res.status(200);
+        res.send({
+          message: "You are being disconnected",
+          status: "OK",
+        });
     }
 }
 

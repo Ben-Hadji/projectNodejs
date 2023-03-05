@@ -1,9 +1,10 @@
 import express from "express"
 import Users, { IUser, Role } from "./IUser"
-import { ReasonPhrases, StatusCodes } from "http-status-codes"
-import { date } from "joi"
-import { isAdmin } from "../middleware/checkAuth"
-import jwt from 'jsonwebtoken';
+import { StatusCodes } from "http-status-codes"
+import auth from "../middleware/auth"
+import { hashPassword } from "../middleware/hashService"
+// import { date } from "joi"
+import { isAdmin, isArtiste } from "../middleware/checkAuth"
 
 // export const users : Array<IUser> = [{nom: "Alex", prenom: "winn", userID: 0, role: Role.admin, password: "alwibe", inscDate: new Date(), mail: "alwibe@gmail.com"}]
 
@@ -15,59 +16,54 @@ router.get("/users", async (req, res) => {
         res.status(200)
         res.send({mesage: "there are all users", data: users})
     } catch(err) {
-
+        res.status(500)
+        res.send({message: "Error in database searching"})
     }
 })
 
-router.post("/create", async (req, res) => {
+router.post("/create", isAdmin, async (req, res) => {
     const user: IUser = {
         nom: req.body.nom,
         prenom : req.body.prenom,
         inscDate: new Date(),
-        password: req.body.password,
+        password: hashPassword(req.body.password),
         role: req.body.role,
         pseudo: req.body.pseudo,
         mail: req.body.mail
     } 
     let userInDb;
-    if ((req.session as any).user.role === Role.admin){
-        if ((user.role === Role.manager)){
-            if(user.pseudo != null){
-                user.pseudo = ""
-            }
-            try {
-                userInDb = new Users({
-                    nom: user.nom,
-                    prenom : user.prenom,
-                    inscDate: user.inscDate,
-                    password: user.password,
-                    role: Role.manager,
-                    pseudo: user.pseudo,
-                    mail: user.mail
-                })
-                await userInDb.save()
-                res.status(201)
-                res.send({message: "manager created (pseudo is not for managers)", status: "Created (Pseudo emptied)" , data: userInDb})
-            } catch (err) {
-                res.status(StatusCodes.UNAUTHORIZED).send({message: "not the right role or there is a duplicate username"})
-            }
+    if ((user.role === Role.manager)){
+        if(user.pseudo != null){
+            user.pseudo = ""
         }
-    }
-
-    else{
-        res.status(StatusCodes.UNAUTHORIZED).send({message: "You're not authorized to create a new user"})
+        try {
+            userInDb = new Users({
+                nom: user.nom,
+                prenom : user.prenom,
+                inscDate: user.inscDate,
+                password: user.password,
+                role: Role.manager,
+                pseudo: user.pseudo,
+                mail: user.mail
+            })
+            await userInDb.save()
+            res.status(201)
+            res.send({message: "manager created (pseudo is not for managers)", status: "Created (Pseudo emptied)" , data: userInDb})
+        } catch (err) {
+            res.status(StatusCodes.UNAUTHORIZED).send({message: "not the right role or there is a duplicate username"})
+        }
     }
 })
 
-router.put("/banartiste/:pseudo", isAdmin, async (req, res) => {
-        const id = req.params.pseudo
+router.put("/banartiste/:id", isAdmin, async (req, res) => {
+        const id = req.params.id
 
         try {
             let updateData = { banni : true}
-            const userFinded = await Users.findOneAndUpdate({pseudo: id}, updateData).exec()
+            const userFinded = await Users.updateOne({_id: id}, updateData)
             if(userFinded) {
                 res.status(201)
-                res.send({message: "Room updated", data: userFinded})
+                res.send({message: "Artist banned", data: userFinded})
             } else {
                 res.status(401)
                 res.send({message: "this artist doesn't exist", status: "not found"})
@@ -83,35 +79,33 @@ router.post("/register", async (req, res) => {
         nom: req.body.nom,
         prenom : req.body.prenom,
         inscDate: new Date(),
-        password: req.body.password,
+        password: hashPassword(req.body.password),
         role: req.body.role,
         pseudo: req.body.pseudo,
         mail: req.body.mail
     } 
 
-    if ((req.session as any).user.role === Role.artiste ){
-        try {
-            let userInDb = new Users({
-                nom: user.nom,
-                prenom : user.prenom,
-                inscDate: user.inscDate,
-                password: user.password,
-                role: Role.artiste,
-                pseudo: user.pseudo,
-                mail: user.mail,
-                banni: false
-            })
-            await userInDb.save()
-            res.status(201)
-            res.send({message: "manager created (pseudo is not for managers)", status: "Created (Pseudo emptied)" , data: userInDb})
-        } catch (err) {
-            res.status(StatusCodes.UNAUTHORIZED).send({message: "not the right role or there is a duplicate username"})
-        }
+    try {
+        let userInDb = new Users({
+            nom: user.nom,
+            prenom : user.prenom,
+            inscDate: user.inscDate,
+            password: user.password,
+            role: Role.artiste,
+            pseudo: user.pseudo,
+            mail: user.mail,
+            banni: false
+        })
+        await userInDb.save()
+        res.status(201)
+        res.send({message: "manager created (pseudo is not for managers)", status: "Created (Pseudo emptied)" , data: userInDb})
+    } catch (err) {
+        res.status(StatusCodes.UNAUTHORIZED).send({message: "not the right role or there is a duplicate username"})
     }
 
-    else{
-        res.status(StatusCodes.UNAUTHORIZED).send({message: "You're not authorized to create a new user"})
-    }
+    // else{
+    //     res.status(StatusCodes.UNAUTHORIZED).send({message: "You're not authorized to create a new user"})
+    // }
 })
 
 router.post("/login", async (req, res) => {
@@ -120,44 +114,26 @@ router.post("/login", async (req, res) => {
         res.render('login', {message: "Please enter username mail to connect"});
     }
     else{
-        try {
-            const userFinded = await Users.findOne({mail: req.body.mail, password: req.body.password}).exec()
-            if(userFinded) {
-                const token = jwt.sign({ id: userFinded.id }, `${process.env.JWT_SECRET}`, { expiresIn: "1d" });
-                res.send({message: `Welcome ${userFinded.prenom}`, status: "logged in", token: token})
-                return
-            } else {
-                res.status(400)
-                res.send({message: "invalid credentials", status: "login failled"})
-            }          
-        } catch (err) {
-            res.status(StatusCodes.NOT_FOUND).send({message: "Error in database"})
-        }
+       await auth.login(req, res)
     }
 })
 
-router.delete("/signout", (req, res) => {
-    if (!(req.session as any).user) {
-      res.status(401);
-      res.send({
-        message: "You're not logged in !",
-        status: "BadRequest",
-      });
-    }
-    
-    const username = (req.session as any).user.userName;
-  
-    (req.session as any).user = undefined;
-    req.session.destroy(() => {
-      console.log(`disconnecting ${username}`);
-    });
-  
-    res.status(200);
-    res.send({
-      message: "You are being disconnected",
-      status: "OK",
-    });
+router.delete("/signout", async (req, res) => {
+    await auth.logout(req, res)
 });
 
+router.delete('user/:id', isAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const user = await Users.deleteOne({
+            _id: id,
+        });
+
+        res.json({ message:'User deleted', user });
+    } catch (err) {
+        console.error(`Error deleting user ${err}`);
+        res.status(StatusCodes.UNAUTHORIZED).send(`Error deleting user ${err}`);
+    }
+})
 
 export default router
