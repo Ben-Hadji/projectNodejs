@@ -1,12 +1,18 @@
 import mongoose, { Schema } from "mongoose"
 import approbation, { Approbation } from "./approbation";
 
+export enum Statut {
+    refusé = "rejected",
+    validé = "confirmed",
+    attente = "on standby"
+}
+
 export interface IMaquette {
     nom: string; 
-    tire: string;
+    titre: string;
     artiste: string;
     artisteID: number;
-    approbation: [Approbation];
+    approbation?: [Approbation];
     statut: Statut;
     ID: number
 }
@@ -20,15 +26,12 @@ const MaquetteSchema = new Schema({
     statut: String,
     ID: {
         type: Number, 
-        unique: true
+        unique: true,
+        default: Statut.attente
         }
 
 })
 export default mongoose.model<IMaquette>('Maquette', MaquetteSchema)
 
-export enum Statut {
-    refusé = "rejected",
-    validé = "confirmed", 
-    attente = "on standby"
-}
+
 
