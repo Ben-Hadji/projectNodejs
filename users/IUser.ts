@@ -13,17 +13,20 @@ export interface IUser{
 
 const UserSchema = new Schema({
     nom: String,
-    prenom: String ,
+    prenom: String,
     role: String,
     pseudo: {
-        type : String,
-        unique : true,
+        type: String,
+        unique: true,
         require: false
     },
     password: {
         type: Object
     },
-    inscDate: Date,
+    inscDate: {
+        type: Date,
+        //default: Date.now //à tester
+    },
     mail: {
         type: String, 
         unique: true,
