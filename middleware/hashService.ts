@@ -27,6 +27,5 @@ export const hashPassword = (password: string): Password => {
 
 export const comparePassword = (password: string, storedPassword: Password): boolean => {
   const hashedPassword = hasher(password, storedPassword.salt)
-  console.log(hashedPassword, storedPassword.password)
   return hashedPassword.password === storedPassword.password
 }

@@ -16,7 +16,6 @@ class Auth{
         this.currentUser = await Users.findOne({
             mail
         })
-        console.log(this.currentUser)
         if ((this.currentUser == null) || !comparePassword(password, this.currentUser?.password)) {
             return res.status(400).json({ error: 'Invalid credentials' })
         }
@@ -24,6 +23,7 @@ class Auth{
         const userWithtoken = generateToken(this.currentUser)
 
         if(this.currentUser){
+            (req.session as any).user = this.currentUser;
             res.status(200)
             res.send({message: `Welcome ${this.currentUser.prenom}`, status: "logged in", data: removePassword(userWithtoken)})
         }else{
@@ -41,6 +41,7 @@ class Auth{
             });
         }
         this.currentUser = {} as IUser
+        (req.session as any).user = undefined;
         res.status(200);
         res.send({
           message: "You are being disconnected",

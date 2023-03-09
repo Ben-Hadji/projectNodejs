@@ -21,7 +21,7 @@ export const isAdmin = (req: Request,res: Response,next: NextFunction) =>{
         next()
     }
     else{
-        res.status(StatusCodes.UNAUTHORIZED).send(ReasonPhrases.UNAUTHORIZED)
+        res.status(StatusCodes.UNAUTHORIZED).send({ message: "reserved to admin" })
     }
 }
 
@@ -31,7 +31,7 @@ export const isManager = (req: Request,res: Response,next: NextFunction) =>{
     if(result)
         next()
     else{
-        res.status(StatusCodes.UNAUTHORIZED).send(ReasonPhrases.UNAUTHORIZED)
+        res.status(StatusCodes.UNAUTHORIZED).send({ message: "reserved to managers" })
     }
 }
 
@@ -41,7 +41,7 @@ export const isArtiste = (req: Request,res: Response,next: NextFunction) =>{
     if(result)
         next()
     else{
-        res.status(StatusCodes.UNAUTHORIZED).send(ReasonPhrases.UNAUTHORIZED)
+        res.status(StatusCodes.UNAUTHORIZED).send({ message: "reserved to artistes" })
     }
 }
 
@@ -53,7 +53,8 @@ return { doc: userWithoutPassword._doc, token: userWithoutPassword.token}
 
 export const generateToken = (user: typeof Users) => {
 // create a jwt token that is valid for 7 days
-const token = jwt.sign({ sub: user }, process.env.JWT_SECRET ?? '', {
+const JWT_SECRET = "my-32-character-ultra-secure-and-ultra-long-secret"
+const token = jwt.sign({ sub: user }, JWT_SECRET ?? '', {
     expiresIn: '7d'
 })
 

@@ -10,11 +10,11 @@ import { isAdmin, isArtiste } from "../middleware/checkAuth"
 
 const router = express.Router()
 
-router.get("/users", async (req, res) => {
+router.get("/users", isAdmin, async (req, res) => {
     try {
         const users = await Users.find({})
         res.status(200)
-        res.send({mesage: "there are all users", data: users})
+        res.send({message: "there are all users", data: users})
     } catch(err) {
         res.status(500)
         res.send({message: "Error in database searching"})
@@ -27,32 +27,27 @@ router.post("/create", isAdmin, async (req, res) => {
         prenom : req.body.prenom,
         inscDate: new Date(),
         password: hashPassword(req.body.password),
-        role: req.body.role,
-        pseudo: req.body.pseudo,
+        role: Role.manager,
         mail: req.body.mail
-    } 
-    let userInDb;
-    if ((user.role === Role.manager)){
-        if(user.pseudo != null){
-            user.pseudo = ""
-        }
-        try {
-            userInDb = new Users({
-                nom: user.nom,
-                prenom : user.prenom,
-                inscDate: user.inscDate,
-                password: user.password,
-                role: Role.manager,
-                pseudo: user.pseudo,
-                mail: user.mail
-            })
-            await userInDb.save()
-            res.status(201)
-            res.send({message: "manager created (pseudo is not for managers)", status: "Created (Pseudo emptied)" , data: userInDb})
-        } catch (err) {
-            res.status(StatusCodes.UNAUTHORIZED).send({message: "not the right role or there is a duplicate username"})
-        }
     }
+
+    try {
+    let userInDb = new Users({
+            nom: user.nom,
+            prenom : user.prenom,
+            inscDate: user.inscDate,
+            password: user.password,
+            role: user.role,
+            mail: user.mail
+        })
+        await userInDb.save()
+        res.status(201)
+        res.send({message: "manager created", status: "Created" , data: userInDb})
+    } catch (err) {
+        console.log(err);
+        res.status(StatusCodes.UNAUTHORIZED).send({message: "Error while creating the manager"})
+    }
+    
 })
 
 router.put("/banartiste/:id", isAdmin, async (req, res) => {
@@ -74,13 +69,36 @@ router.put("/banartiste/:id", isAdmin, async (req, res) => {
         }
 })
 
+router.put("/resetpassword/", isAdmin, async (req, res) => {
+
+    if (!req.body.password) {
+        res.status(StatusCodes.BAD_REQUEST).send({message: "Please enter new password"})
+    }
+    else{
+        const id = (req.session as any).user._id
+        try {
+            const updateData = { 
+                password: hashPassword(req.body.password)
+            }
+
+            const userFinded = await Users.updateOne({_id: id}, updateData)
+            if(userFinded) {
+                res.status(201)
+                res.send({message: "Password reset succesfully", data: userFinded})
+            }
+        } catch(err) {
+            res.status(StatusCodes.NOT_FOUND).send({message: "Error cannot reset password"})
+        }
+    }
+})
+
 router.post("/register", async (req, res) => {
     const user: IUser = {
         nom: req.body.nom,
         prenom : req.body.prenom,
         inscDate: new Date(),
         password: hashPassword(req.body.password),
-        role: req.body.role,
+        role: Role.artiste,
         pseudo: req.body.pseudo,
         mail: req.body.mail
     } 
@@ -98,9 +116,10 @@ router.post("/register", async (req, res) => {
         })
         await userInDb.save()
         res.status(201)
-        res.send({message: "manager created (pseudo is not for managers)", status: "Created (Pseudo emptied)" , data: userInDb})
+        res.send({message: "artist created", status: "Created" , data: userInDb})
     } catch (err) {
-        res.status(StatusCodes.UNAUTHORIZED).send({message: "not the right role or there is a duplicate username"})
+        console.log(err);
+        res.status(StatusCodes.UNAUTHORIZED).send({message: "Error while creating the artist"})
     }
 
     // else{
@@ -110,8 +129,9 @@ router.post("/register", async (req, res) => {
 
 router.post("/login", async (req, res) => {
     // console.log(users)
-    if(!req.body.mail){
-        res.render('login', {message: "Please enter username mail to connect"});
+    
+    if( (!req.body.mail) || (!req.body.password) ){
+        res.status(StatusCodes.BAD_REQUEST).send({message: "Please enter mail and password"})
     }
     else{
        await auth.login(req, res)
@@ -122,7 +142,7 @@ router.delete("/signout", async (req, res) => {
     await auth.logout(req, res)
 });
 
-router.delete('user/:id', isAdmin, async (req, res) => {
+router.delete('/user/:id', isAdmin, async (req, res) => {
     try {
         const { id } = req.params;
         const user = await Users.deleteOne({

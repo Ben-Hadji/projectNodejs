@@ -25,7 +25,7 @@ const UserSchema = new Schema({
     },
     inscDate: {
         type: Date,
-        //default: Date.now //à tester
+        //default: Date.now //ï¿½ tester
     },
     mail: {
         type: String, 
