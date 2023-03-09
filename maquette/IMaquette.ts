@@ -2,8 +2,8 @@ import mongoose, { Schema } from "mongoose"
 import approbation, { Approbation } from "./approbation";
 
 export enum Statut {
-    refusé = "rejected",
-    validé = "confirmed",
+    refused = "rejected",
+    validated = "confirmed",
     attente = "on standby"
 }
 

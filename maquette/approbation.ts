@@ -10,7 +10,7 @@ const ApprobationSchema = new Schema({
     flag: String,
     commentaire: String,
     managerID: {
-        type: Number,
+        type: String,
         unique: true,
     }
 })
